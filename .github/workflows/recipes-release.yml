@@ -47,7 +47,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: Greenroom-Robotics/ros_semantic_release_action
-          ref: ${{ github.workflow_sha }}
           path: ${{ env.RELEASE_TOOLING_DIR }}
 
       - uses: actions/setup-node@v6
