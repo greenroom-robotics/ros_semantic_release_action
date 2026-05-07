@@ -23,8 +23,6 @@ jobs:
     env:
       PACKAGE: ${{ inputs.package }}
       PACKAGE_PATH: ${{ inputs.package_path }}
-      SOURCE_REPO: ${{ github.repository }}
-      RECIPES_REPO: ${{ inputs.recipes_repo }}
       RELEASE_TOOLING_DIR: _release_tooling
     steps:
       - name: Mint GitHub App token
@@ -60,7 +58,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm --prefix "${RELEASE_TOOLING_DIR}" ci
+          npm --prefix "$RELEASE_TOOLING_DIR" ci
           cargo install --locked toml-cli
 
       - name: Run semantic-release
@@ -68,12 +66,28 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: ${{ env.RELEASE_TOOLING_DIR }}/scripts/run-semantic-release.sh
+        run: |
+          set -euo pipefail
+          ./$RELEASE_TOOLING_DIR/node_modules/.bin/semantic-release \
+            --extends ./$RELEASE_TOOLING_DIR/release.config.js
+          # If a release was published, semantic-release left a new tag at HEAD.
+          tag=$(git tag --points-at HEAD --list "$PACKAGE@*" | head -n1)
+          if [ -n "$tag" ]; then
+            {
+              echo "released=true"
+              echo "version=${tag#$PACKAGE@}"
+              echo "sha=$(git rev-parse HEAD)"
+            } >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Dispatch package-released
         if: steps.release.outputs.released == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          VERSION: ${{ steps.release.outputs.version }}
-          SHA: ${{ steps.release.outputs.sha }}
-        run: ${{ env.RELEASE_TOOLING_DIR }}/scripts/dispatch-release.sh
+        run: |
+          gh api -X POST "/repos/${{ inputs.recipes_repo }}/dispatches" \
+            -f event_type=package-released \
+            -f "client_payload[package]=$PACKAGE" \
+            -f "client_payload[version]=${{ steps.release.outputs.version }}" \
+            -f "client_payload[source_repo]=${{ github.repository }}" \
+            -f "client_payload[sha]=${{ steps.release.outputs.sha }}"
