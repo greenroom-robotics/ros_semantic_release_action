@@ -60,6 +60,15 @@ jobs:
           npm --prefix "$RELEASE_TOOLING_DIR" ci
           cargo install --locked toml-cli
 
+      - name: Configure git as App bot
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          USER_ID=$(gh api "/users/${SLUG}[bot]" --jq .id)
+          git config --global user.name "${SLUG}[bot]"
+          git config --global user.email "${USER_ID}+${SLUG}[bot]@users.noreply.github.com"
+
       # semantic-release-monorepo identifies the package by reading
       # package.json from cwd. Source repos use pixi.toml as their manifest
       # — stub a package.json inside the package dir at runtime. Never
