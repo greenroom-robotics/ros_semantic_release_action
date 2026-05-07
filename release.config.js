@@ -1,27 +1,37 @@
 // semantic-release config for the reusable workflow.
-// Reads runtime parameters from env vars set by the workflow.
+//
+// Runtime contract: semantic-release runs with cwd = the package directory
+// (so semantic-release-monorepo can find the stub package.json there and
+// scope commits to that path). Paths must be absolute so they don't
+// depend on cwd. GITHUB_WORKSPACE is the source repo root on the runner.
+const path = require('path');
+
 const pkg = process.env.PACKAGE;
 const pkgPath = process.env.PACKAGE_PATH;
-const tooling = process.env.RELEASE_TOOLING_DIR || '_release_tooling';
+const repoRoot = process.env.GITHUB_WORKSPACE;
+const toolingRel = process.env.RELEASE_TOOLING_DIR || '_release_tooling';
 
-if (!pkg || !pkgPath) {
-  throw new Error('PACKAGE and PACKAGE_PATH env vars are required');
+if (!pkg || !pkgPath || !repoRoot) {
+  throw new Error('PACKAGE, PACKAGE_PATH, and GITHUB_WORKSPACE env vars are required');
 }
 
+const pkgRoot = path.join(repoRoot, pkgPath);
+const tooling = path.join(repoRoot, toolingRel);
+
 module.exports = {
+  extends: 'semantic-release-monorepo',
   branches: ['main'],
   tagFormat: `${pkg}@\${version}`,
   plugins: [
-    ['semantic-release-monorepo', { mainPackage: pkgPath }],
     ['@semantic-release/commit-analyzer', { preset: 'conventionalcommits' }],
     ['@semantic-release/release-notes-generator', { preset: 'conventionalcommits' }],
-    ['@semantic-release/changelog', { changelogFile: `${pkgPath}/CHANGELOG.md` }],
+    ['@semantic-release/changelog', { changelogFile: `${pkgRoot}/CHANGELOG.md` }],
     ['@semantic-release/exec', {
-      prepareCmd: `toml set ${pkgPath}/pixi.toml 'package.version' \${nextRelease.version} > ${pkgPath}/pixi.toml.new && mv ${pkgPath}/pixi.toml.new ${pkgPath}/pixi.toml`,
+      prepareCmd: `toml set ${pkgRoot}/pixi.toml 'package.version' \${nextRelease.version} > ${pkgRoot}/pixi.toml.new && mv ${pkgRoot}/pixi.toml.new ${pkgRoot}/pixi.toml`,
       successCmd: `${tooling}/scripts/dispatch-release.sh \${nextRelease.version} \${nextRelease.gitHead}`,
     }],
     ['@semantic-release/git', {
-      assets: [`${pkgPath}/pixi.toml`, `${pkgPath}/CHANGELOG.md`],
+      assets: [`${pkgRoot}/pixi.toml`, `${pkgRoot}/CHANGELOG.md`],
       message: `chore(release): ${pkg}@\${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}`,
     }],
     '@semantic-release/github',

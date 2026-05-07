@@ -60,20 +60,23 @@ jobs:
           npm --prefix "$RELEASE_TOOLING_DIR" ci
           cargo install --locked toml-cli
 
-      # semantic-release-monorepo reads package.json at the source repo
-      # root for the package name. Source repos don't carry one (they use
-      # pixi.toml). Stub it at runtime; never committed.
+      # semantic-release-monorepo identifies the package by reading
+      # package.json from cwd. Source repos use pixi.toml as their manifest
+      # — stub a package.json inside the package dir at runtime. Never
+      # committed (each source repo's caller workflow owns this dir).
       - name: Stub package.json for semantic-release-monorepo
         run: |
-          if [ ! -f package.json ]; then
-            printf '{"name":"%s","private":true}\n' "$PACKAGE" > package.json
+          if [ ! -f "$PACKAGE_PATH/package.json" ]; then
+            printf '{"name":"%s","private":true}\n' "$PACKAGE" \
+              > "$PACKAGE_PATH/package.json"
           fi
 
       - name: Run semantic-release
+        working-directory: ${{ env.PACKAGE_PATH }}
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           RECIPES_REPO: ${{ inputs.recipes_repo }}
         run: |
-          npm --prefix "$RELEASE_TOOLING_DIR" exec -- \
-            semantic-release --extends "./$RELEASE_TOOLING_DIR/release.config.js"
+          npm --prefix "$GITHUB_WORKSPACE/$RELEASE_TOOLING_DIR" exec -- \
+            semantic-release --extends "$GITHUB_WORKSPACE/$RELEASE_TOOLING_DIR/release.config.js"
