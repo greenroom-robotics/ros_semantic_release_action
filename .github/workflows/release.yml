@@ -124,3 +124,44 @@ jobs:
           sha="$(git rev-list -n1 "$tag")"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch package-released to recipes repo
+        if: steps.release.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          payload="$(jq -n \
+            --arg pkg  '${{ inputs.package }}' \
+            --arg ver  '${{ steps.release.outputs.version }}' \
+            --arg tag  '${{ steps.release.outputs.tag }}' \
+            --arg src  '${{ github.repository }}' \
+            --arg sha  '${{ steps.release.outputs.sha }}' \
+            '{package:$pkg, version:$ver, tag:$tag, source_repo:$src, sha:$sha}')"
+          echo "Dispatching:"
+          echo "$payload"
+
+          gh api -X POST \
+            "/repos/${{ inputs.recipes_repo }}/dispatches" \
+            -H 'Accept: application/vnd.github+json' \
+            --input - <<EOF
+          { "event_type": "package-released", "client_payload": $payload }
+          EOF
+
+      - name: Manual recovery hint
+        if: failure() && steps.release.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cat <<EOM
+          The release tag was created but the dispatch failed. Re-fire manually:
+
+          gh api -X POST /repos/${{ inputs.recipes_repo }}/dispatches \\
+            -H 'Accept: application/vnd.github+json' \\
+            -f event_type=package-released \\
+            -F client_payload[package]=${{ inputs.package }} \\
+            -F client_payload[version]=${{ steps.release.outputs.version }} \\
+            -F client_payload[tag]=${{ steps.release.outputs.tag }} \\
+            -F client_payload[source_repo]=${{ github.repository }} \\
+            -F client_payload[sha]=${{ steps.release.outputs.sha }}
+          EOM
