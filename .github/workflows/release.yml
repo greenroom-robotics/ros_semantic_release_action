@@ -134,10 +134,9 @@ jobs:
           payload="$(jq -n \
             --arg pkg  '${{ inputs.package }}' \
             --arg ver  '${{ steps.release.outputs.version }}' \
-            --arg tag  '${{ steps.release.outputs.tag }}' \
             --arg src  '${{ github.repository }}' \
             --arg sha  '${{ steps.release.outputs.sha }}' \
-            '{package:$pkg, version:$ver, tag:$tag, source_repo:$src, sha:$sha}')"
+            '{package:$pkg, version:$ver, source_repo:$src, sha:$sha}')"
           echo "Dispatching:"
           echo "$payload"
 
@@ -161,7 +160,6 @@ jobs:
             -f event_type=package-released \\
             -F client_payload[package]=${{ inputs.package }} \\
             -F client_payload[version]=${{ steps.release.outputs.version }} \\
-            -F client_payload[tag]=${{ steps.release.outputs.tag }} \\
             -F client_payload[source_repo]=${{ github.repository }} \\
             -F client_payload[sha]=${{ steps.release.outputs.sha }}
           EOM
