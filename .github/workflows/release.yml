@@ -33,7 +33,7 @@ jobs:
             ${{ github.event.repository.name }}
             ros-recipes
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
@@ -47,9 +47,9 @@ jobs:
           test -f "${{ inputs.package_path }}/pixi.toml" \
             || { echo "::error::pixi.toml not found at ${{ inputs.package_path }}"; exit 1; }
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install toml-cli
         run: cargo install --locked toml-cli
@@ -59,7 +59,7 @@ jobs:
       # at runtime, so check out the action repo at the same SHA the
       # workflow runs at into a sibling dir.
       - name: Checkout release-tooling (action repo)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: Greenroom-Robotics/ros_semantic_release_action
           ref: ${{ github.workflow_sha }}
