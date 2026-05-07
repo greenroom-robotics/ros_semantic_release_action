@@ -67,5 +67,5 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           RECIPES_REPO: ${{ inputs.recipes_repo }}
         run: |
-          ./$RELEASE_TOOLING_DIR/node_modules/.bin/semantic-release \
-            --extends ./$RELEASE_TOOLING_DIR/release.config.js
+          npm --prefix "$RELEASE_TOOLING_DIR" exec -- \
+            semantic-release --extends "./$RELEASE_TOOLING_DIR/release.config.js"
