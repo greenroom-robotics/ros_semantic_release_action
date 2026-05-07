@@ -1,81 +1,22 @@
 {
-  "name": "ros_semantic_release_action",
-  "version": "1.0.0",
+  "name": "ros-semantic-release-action",
+  "version": "0.0.0",
   "private": true,
-  "scripts": {
-    "release": "multi-semantic-release"
-  },
+  "description": "Reusable workflow + helpers for ROS source-repo releases.",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/greenroom-robotics/ros_semantic_release_action.git"
   },
-  "author": "Greenroom Robotics Team <team@greenroomrobotics.com.au>",
-  "license": "UNLICENSED",
-  "bugs": {
-    "url": "https://github.com/greenroom-robotics/ros_semantic_release_action/issues"
-  },
-  "workspaces": [
-    "packages/*"
-  ],
-  "homepage": "https://github.com/greenroom-robotics/ros_semantic_release_action#readme",
-  "devDependencies": {
-    "@semantic-release/changelog": "^6.0.1",
-    "@semantic-release/commit-analyzer": "^9.0.2",
+  "dependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
-    "@semantic-release/release-notes-generator": "^10.0.3",
-    "conventional-changelog-conventionalcommits": "^5.0.0",
-    "semantic-release": "^19.0.3",
-    "@qiwi/multi-semantic-release": "^6.5.1",
-    "@semantic-release/exec": "^6.0.3"
-  },
-  "release": {
-    "branches": [
-      "main",
-      {
-        "name": "alpha",
-        "prerelease": true
-      }
-    ],
-    "plugins": [
-      [
-        "@semantic-release/commit-analyzer",
-        {
-          "preset": "conventionalcommits"
-        }
-      ],
-      [
-        "@semantic-release/release-notes-generator",
-        {
-          "preset": "conventionalcommits"
-        }
-      ],
-      "@semantic-release/changelog",
-      [
-        "@semantic-release/exec",
-        {
-          "prepareCmd": "/__w/_actions/Greenroom-Robotics/ros_semantic_release_action/main/scripts/ros-build-debian.sh ${nextRelease.version}",
-          "publishCmd": "/__w/_actions/Greenroom-Robotics/ros_semantic_release_action/main/scripts/ros-publish-debian.sh"
-        }
-      ],
-      [
-        "@semantic-release/github",
-        {
-          "assets": [
-            {
-              "path": "./deb-output/*.deb"
-            }
-          ],
-          "successComment": false
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "assets": [
-            "CHANGELOG.md"
-          ]
-        }
-      ]
-    ]
+    "@semantic-release/github": "^11.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.3",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "semantic-release": "^24.2.3",
+    "semantic-release-monorepo": "^8.0.2"
   }
 }

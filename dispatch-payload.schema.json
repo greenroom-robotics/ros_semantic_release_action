@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Greenroom-Robotics/ros_semantic_release_action/main/dispatch-payload.schema.json",
+  "title": "package-released dispatch payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["package", "version", "source_repo", "sha"],
+  "properties": {
+    "package": {
+      "type": "string",
+      "description": "Bare ROS package name (no ros-<distro>- prefix).",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver string, no leading v.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"
+    },
+    "source_repo": {
+      "type": "string",
+      "description": "GitHub <owner>/<repo> the release came from.",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "sha": {
+      "type": "string",
+      "description": "SHA of the tagged commit.",
+      "pattern": "^[0-9a-f]{40}$"
+    }
+  }
+}
