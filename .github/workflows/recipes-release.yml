@@ -60,6 +60,15 @@ jobs:
           npm --prefix "$RELEASE_TOOLING_DIR" ci
           cargo install --locked toml-cli
 
+      # semantic-release-monorepo reads package.json at the source repo
+      # root for the package name. Source repos don't carry one (they use
+      # pixi.toml). Stub it at runtime; never committed.
+      - name: Stub package.json for semantic-release-monorepo
+        run: |
+          if [ ! -f package.json ]; then
+            printf '{"name":"%s","private":true}\n' "$PACKAGE" > package.json
+          fi
+
       - name: Run semantic-release
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
