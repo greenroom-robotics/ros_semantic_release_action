@@ -27,13 +27,18 @@ module.exports = {
     ['@semantic-release/release-notes-generator', { preset: 'conventionalcommits' }],
     ['@semantic-release/changelog', { changelogFile: `${pkgRoot}/CHANGELOG.md` }],
     ['@semantic-release/exec', {
-      prepareCmd: `toml set ${pkgRoot}/pixi.toml 'package.version' \${nextRelease.version} > ${pkgRoot}/pixi.toml.new && mv ${pkgRoot}/pixi.toml.new ${pkgRoot}/pixi.toml`,
+      prepareCmd: `python -c "import tomlkit; p='${pkgRoot}/pixi.toml'; d=tomlkit.parse(open(p).read()); d['package']['version']='\${nextRelease.version}'; open(p,'w').write(tomlkit.dumps(d))"`,
       successCmd: `${tooling}/scripts/dispatch-release.sh \${nextRelease.version} \${nextRelease.gitHead}`,
     }],
     ['@semantic-release/git', {
       assets: [`${pkgRoot}/pixi.toml`, `${pkgRoot}/CHANGELOG.md`],
       message: `chore(release): ${pkg}@\${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}`,
     }],
-    '@semantic-release/github',
+    ['@semantic-release/github', {
+      successComment: false,
+      failComment: false,
+      releasedLabels: false,
+      addReleases: false,
+    }],
   ],
 };
