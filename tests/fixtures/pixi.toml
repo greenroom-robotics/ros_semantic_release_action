@@ -1,0 +1,12 @@
+#:schema https://example.com/schema.json
+
+[package]
+name = "demo"
+version = "0.1.0"
+description = "Used by bump-pixi.bats — do not edit."
+license = "MIT"
+authors = ["Test <test@example.com>"]
+
+# Important: trailing comment must survive the bump.
+[package.run-dependencies]
+ros-kilted-rclpy = "*"
