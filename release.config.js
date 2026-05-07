@@ -34,6 +34,11 @@ module.exports = {
       assets: [`${pkgRoot}/pixi.toml`, `${pkgRoot}/CHANGELOG.md`],
       message: `chore(release): ${pkg}@\${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}`,
     }],
-    '@semantic-release/github',
+    ['@semantic-release/github', {
+      successComment: false,
+      failComment: false,
+      releasedLabels: false,
+      addReleases: false,
+    }],
   ],
 };
