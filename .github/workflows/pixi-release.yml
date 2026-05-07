@@ -1,0 +1,93 @@
+name: release
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: Bare ROS package name.
+        type: string
+        required: true
+      package_path:
+        description: Path from repo root to the dir containing the package's pixi.toml.
+        type: string
+        required: true
+      recipes_repo:
+        description: GitHub <owner>/<repo> of the recipes repo to dispatch.
+        type: string
+        default: greenroom-robotics/ros-recipes
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      PACKAGE: ${{ inputs.package }}
+      PACKAGE_PATH: ${{ inputs.package_path }}
+      RELEASE_TOOLING_DIR: _release_tooling
+    steps:
+      - name: Mint GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+            ros-recipes
+
+      - name: Checkout source repo
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Checkout release-tooling
+        uses: actions/checkout@v6
+        with:
+          repository: Greenroom-Robotics/ros_semantic_release_action
+          ref: ${{ github.workflow_sha }}
+          path: ${{ env.RELEASE_TOOLING_DIR }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ env.RELEASE_TOOLING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm --prefix "$RELEASE_TOOLING_DIR" ci
+          cargo install --locked toml-cli
+
+      - name: Run semantic-release
+        id: release
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          ./$RELEASE_TOOLING_DIR/node_modules/.bin/semantic-release \
+            --extends ./$RELEASE_TOOLING_DIR/release.config.js
+          # If a release was published, semantic-release left a new tag at HEAD.
+          tag=$(git tag --points-at HEAD --list "$PACKAGE@*" | head -n1)
+          if [ -n "$tag" ]; then
+            {
+              echo "released=true"
+              echo "version=${tag#$PACKAGE@}"
+              echo "sha=$(git rev-parse HEAD)"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dispatch package-released
+        if: steps.release.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api -X POST "/repos/${{ inputs.recipes_repo }}/dispatches" \
+            -f event_type=package-released \
+            -f "client_payload[package]=$PACKAGE" \
+            -f "client_payload[version]=${{ steps.release.outputs.version }}" \
+            -f "client_payload[source_repo]=${{ github.repository }}" \
+            -f "client_payload[sha]=${{ steps.release.outputs.sha }}"
