@@ -18,7 +18,14 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions: { contents: read }
+    permissions:
+      contents: read
+    env:
+      PACKAGE: ${{ inputs.package }}
+      PACKAGE_PATH: ${{ inputs.package_path }}
+      SOURCE_REPO: ${{ github.repository }}
+      RECIPES_REPO: ${{ inputs.recipes_repo }}
+      RELEASE_TOOLING_DIR: _release_tooling
     steps:
       - name: Mint GitHub App token
         id: app-token
@@ -27,139 +34,46 @@ jobs:
           client-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-          # Token must be valid for both source repo (push) and recipes repo (dispatch).
-          # Multi-line newline-separated list.
           repositories: |
             ${{ github.event.repository.name }}
             ros-recipes
 
-      - uses: actions/checkout@v6
+      - name: Checkout source repo
+        uses: actions/checkout@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Show inputs (debug)
-        run: |
-          echo "package=${{ inputs.package }}"
-          echo "package_path=${{ inputs.package_path }}"
-          echo "recipes_repo=${{ inputs.recipes_repo }}"
-          test -f "${{ inputs.package_path }}/pixi.toml" \
-            || { echo "::error::pixi.toml not found at ${{ inputs.package_path }}"; exit 1; }
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Install toml-cli
-        run: cargo install --locked toml-cli
-
-      # Reusable workflows do NOT auto-checkout the action repo's files,
-      # only the workflow YAML itself. We need scripts/bump-pixi-version.sh
-      # at runtime, so check out the action repo at the same SHA the
-      # workflow runs at into a sibling dir.
-      - name: Checkout release-tooling (action repo)
+      - name: Checkout release-tooling
         uses: actions/checkout@v6
         with:
           repository: Greenroom-Robotics/ros_semantic_release_action
           ref: ${{ github.workflow_sha }}
-          path: _release_tooling
+          path: ${{ env.RELEASE_TOOLING_DIR }}
 
-      - name: Install semantic-release plugins
-        run: |
-          npm install --no-save \
-            semantic-release@24 \
-            semantic-release-monorepo@8 \
-            @semantic-release/commit-analyzer@13 \
-            @semantic-release/release-notes-generator@14 \
-            @semantic-release/changelog@6 \
-            @semantic-release/git@10 \
-            @semantic-release/github@11 \
-            @semantic-release/exec@7 \
-            conventional-changelog-conventionalcommits@8
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ env.RELEASE_TOOLING_DIR }}/package-lock.json
 
-      - name: Write .releaserc.json
-        env:
-          PACKAGE: ${{ inputs.package }}
-          PACKAGE_PATH: ${{ inputs.package_path }}
+      - name: Install dependencies
         run: |
-          cat > .releaserc.json <<JSON
-          {
-            "branches": ["main"],
-            "tagFormat": "${PACKAGE}@\${version}",
-            "plugins": [
-              ["semantic-release-monorepo", { "mainPackage": "${PACKAGE_PATH}" }],
-              ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
-              ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
-              ["@semantic-release/changelog", { "changelogFile": "${PACKAGE_PATH}/CHANGELOG.md" }],
-              ["@semantic-release/exec",
-               { "prepareCmd": "_release_tooling/scripts/bump-pixi-version.sh ${PACKAGE_PATH}/pixi.toml \${nextRelease.version}" }],
-              ["@semantic-release/git",
-               { "assets": ["${PACKAGE_PATH}/pixi.toml", "${PACKAGE_PATH}/CHANGELOG.md"],
-                 "message": "chore(release): ${PACKAGE}@\${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}" }],
-              "@semantic-release/github"
-            ]
-          }
-          JSON
-          cat .releaserc.json
+          npm --prefix "${RELEASE_TOOLING_DIR}" ci
+          cargo install --locked toml-cli
 
       - name: Run semantic-release
         id: release
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          set -euo pipefail
-          npx semantic-release | tee semantic-release.log
-          version="$(grep -oE 'Published release [0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?' \
-                       semantic-release.log | awk '{print $3}' | tail -n1 || true)"
-          if [ -z "$version" ]; then
-            echo "no release published"
-            echo "released=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "released=true" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          tag="${{ inputs.package }}@$version"
-          sha="$(git rev-list -n1 "$tag")"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+        run: ${{ env.RELEASE_TOOLING_DIR }}/scripts/run-semantic-release.sh
 
-      - name: Dispatch package-released to recipes repo
+      - name: Dispatch package-released
         if: steps.release.outputs.released == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          set -euo pipefail
-          payload="$(jq -n \
-            --arg pkg  '${{ inputs.package }}' \
-            --arg ver  '${{ steps.release.outputs.version }}' \
-            --arg src  '${{ github.repository }}' \
-            --arg sha  '${{ steps.release.outputs.sha }}' \
-            '{package:$pkg, version:$ver, source_repo:$src, sha:$sha}')"
-          echo "Dispatching:"
-          echo "$payload"
-
-          gh api -X POST \
-            "/repos/${{ inputs.recipes_repo }}/dispatches" \
-            -H 'Accept: application/vnd.github+json' \
-            --input - <<EOF
-          { "event_type": "package-released", "client_payload": $payload }
-          EOF
-
-      - name: Manual recovery hint
-        if: failure() && steps.release.outputs.released == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          cat <<EOM
-          The release tag was created but the dispatch failed. Re-fire manually:
-
-          gh api -X POST /repos/${{ inputs.recipes_repo }}/dispatches \\
-            -H 'Accept: application/vnd.github+json' \\
-            -f event_type=package-released \\
-            -F client_payload[package]=${{ inputs.package }} \\
-            -F client_payload[version]=${{ steps.release.outputs.version }} \\
-            -F client_payload[source_repo]=${{ github.repository }} \\
-            -F client_payload[sha]=${{ steps.release.outputs.sha }}
-          EOM
+          VERSION: ${{ steps.release.outputs.version }}
+          SHA: ${{ steps.release.outputs.sha }}
+        run: ${{ env.RELEASE_TOOLING_DIR }}/scripts/dispatch-release.sh
