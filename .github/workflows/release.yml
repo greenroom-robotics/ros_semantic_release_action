@@ -46,3 +46,81 @@ jobs:
           echo "recipes_repo=${{ inputs.recipes_repo }}"
           test -f "${{ inputs.package_path }}/pixi.toml" \
             || { echo "::error::pixi.toml not found at ${{ inputs.package_path }}"; exit 1; }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install toml-cli
+        run: cargo install --locked toml-cli
+
+      # Reusable workflows do NOT auto-checkout the action repo's files,
+      # only the workflow YAML itself. We need scripts/bump-pixi-version.sh
+      # at runtime, so check out the action repo at the same SHA the
+      # workflow runs at into a sibling dir.
+      - name: Checkout release-tooling (action repo)
+        uses: actions/checkout@v4
+        with:
+          repository: Greenroom-Robotics/ros_semantic_release_action
+          ref: ${{ github.workflow_sha }}
+          path: _release_tooling
+
+      - name: Install semantic-release plugins
+        run: |
+          npm install --no-save \
+            semantic-release@24 \
+            semantic-release-monorepo@8 \
+            @semantic-release/commit-analyzer@13 \
+            @semantic-release/release-notes-generator@14 \
+            @semantic-release/changelog@6 \
+            @semantic-release/git@10 \
+            @semantic-release/github@11 \
+            @semantic-release/exec@7 \
+            conventional-changelog-conventionalcommits@8
+
+      - name: Write .releaserc.json
+        env:
+          PACKAGE: ${{ inputs.package }}
+          PACKAGE_PATH: ${{ inputs.package_path }}
+        run: |
+          cat > .releaserc.json <<JSON
+          {
+            "branches": ["main"],
+            "tagFormat": "${PACKAGE}@\${version}",
+            "plugins": [
+              ["semantic-release-monorepo", { "mainPackage": "${PACKAGE_PATH}" }],
+              ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
+              ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
+              ["@semantic-release/changelog", { "changelogFile": "${PACKAGE_PATH}/CHANGELOG.md" }],
+              ["@semantic-release/exec",
+               { "prepareCmd": "_release_tooling/scripts/bump-pixi-version.sh ${PACKAGE_PATH}/pixi.toml \${nextRelease.version}" }],
+              ["@semantic-release/git",
+               { "assets": ["${PACKAGE_PATH}/pixi.toml", "${PACKAGE_PATH}/CHANGELOG.md"],
+                 "message": "chore(release): ${PACKAGE}@\${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}" }],
+              "@semantic-release/github"
+            ]
+          }
+          JSON
+          cat .releaserc.json
+
+      - name: Run semantic-release
+        id: release
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          npx semantic-release | tee semantic-release.log
+          version="$(grep -oE 'Published release [0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?' \
+                       semantic-release.log | awk '{print $3}' | tail -n1 || true)"
+          if [ -z "$version" ]; then
+            echo "no release published"
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "released=true" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          tag="${{ inputs.package }}@$version"
+          sha="$(git rev-list -n1 "$tag")"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
