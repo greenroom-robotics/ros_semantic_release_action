@@ -7,9 +7,13 @@ on:
         type: string
         required: true
       package_path:
-        description: Path from repo root to the dir containing the package's pixi.toml.
+        description: Path from repo root to the dir containing the package's manifest.
         type: string
         required: true
+      manifest_type:
+        description: 'Manifest format: pixi.toml (default) or package.xml.'
+        type: string
+        default: pixi.toml
       recipes_repo:
         description: GitHub <owner>/<repo> of the recipes repo to dispatch.
         type: string
@@ -23,6 +27,7 @@ jobs:
     env:
       PACKAGE: ${{ inputs.package }}
       PACKAGE_PATH: ${{ inputs.package_path }}
+      MANIFEST_TYPE: ${{ inputs.manifest_type }}
       RELEASE_TOOLING_DIR: _release_tooling
     steps:
       - name: Mint GitHub App token
@@ -58,27 +63,16 @@ jobs:
       - name: Install dependencies
         run: |
           npm --prefix "$RELEASE_TOOLING_DIR" ci
-          pip install --quiet tomlkit
+          pip install --quiet tomlkit lxml
 
       - name: Configure git as App bot
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           SLUG: ${{ steps.app-token.outputs.app-slug }}
-        run: |
-          USER_ID=$(gh api "/users/${SLUG}[bot]" --jq .id)
-          git config --global user.name "${SLUG}[bot]"
-          git config --global user.email "${USER_ID}+${SLUG}[bot]@users.noreply.github.com"
+        run: ./${{ env.RELEASE_TOOLING_DIR }}/scripts/configure-app-bot.sh
 
-      # semantic-release-monorepo identifies the package by reading
-      # package.json from cwd. Source repos use pixi.toml as their manifest
-      # — stub a package.json inside the package dir at runtime. Never
-      # committed (each source repo's caller workflow owns this dir).
       - name: Stub package.json for semantic-release-monorepo
-        run: |
-          if [ ! -f "$PACKAGE_PATH/package.json" ]; then
-            printf '{"name":"%s","private":true}\n' "$PACKAGE" \
-              > "$PACKAGE_PATH/package.json"
-          fi
+        run: ./${{ env.RELEASE_TOOLING_DIR }}/scripts/stub-package-json.sh
 
       - name: Run semantic-release
         working-directory: ${{ env.PACKAGE_PATH }}
