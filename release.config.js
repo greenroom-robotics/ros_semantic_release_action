@@ -17,7 +17,7 @@ module.exports = {
     ['@semantic-release/release-notes-generator', { preset: 'conventionalcommits' }],
     ['@semantic-release/changelog', { changelogFile: `${pkgPath}/CHANGELOG.md` }],
     ['@semantic-release/exec', {
-      prepareCmd: `${tooling}/scripts/bump-pixi-version.sh ${pkgPath}/pixi.toml \${nextRelease.version}`,
+      prepareCmd: `toml set ${pkgPath}/pixi.toml 'package.version' \${nextRelease.version} > ${pkgPath}/pixi.toml.new && mv ${pkgPath}/pixi.toml.new ${pkgPath}/pixi.toml`,
       successCmd: `${tooling}/scripts/dispatch-release.sh \${nextRelease.version} \${nextRelease.gitHead}`,
     }],
     ['@semantic-release/git', {
