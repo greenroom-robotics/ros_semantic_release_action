@@ -18,6 +18,7 @@ module.exports = {
     ['@semantic-release/changelog', { changelogFile: `${pkgPath}/CHANGELOG.md` }],
     ['@semantic-release/exec', {
       prepareCmd: `${tooling}/scripts/bump-pixi-version.sh ${pkgPath}/pixi.toml \${nextRelease.version}`,
+      successCmd: `${tooling}/scripts/dispatch-release.sh \${nextRelease.version} \${nextRelease.gitHead}`,
     }],
     ['@semantic-release/git', {
       assets: [`${pkgPath}/pixi.toml`, `${pkgPath}/CHANGELOG.md`],

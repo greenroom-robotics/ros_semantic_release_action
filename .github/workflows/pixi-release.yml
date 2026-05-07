@@ -62,32 +62,10 @@ jobs:
           cargo install --locked toml-cli
 
       - name: Run semantic-release
-        id: release
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          RECIPES_REPO: ${{ inputs.recipes_repo }}
         run: |
-          set -euo pipefail
           ./$RELEASE_TOOLING_DIR/node_modules/.bin/semantic-release \
             --extends ./$RELEASE_TOOLING_DIR/release.config.js
-          # If a release was published, semantic-release left a new tag at HEAD.
-          tag=$(git tag --points-at HEAD --list "$PACKAGE@*" | head -n1)
-          if [ -n "$tag" ]; then
-            {
-              echo "released=true"
-              echo "version=${tag#$PACKAGE@}"
-              echo "sha=$(git rev-parse HEAD)"
-            } >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Dispatch package-released
-        if: steps.release.outputs.released == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh api -X POST "/repos/${{ inputs.recipes_repo }}/dispatches" \
-            -f event_type=package-released \
-            -f "client_payload[package]=$PACKAGE" \
-            -f "client_payload[version]=${{ steps.release.outputs.version }}" \
-            -f "client_payload[source_repo]=${{ github.repository }}" \
-            -f "client_payload[sha]=${{ steps.release.outputs.sha }}"
