@@ -1,187 +1,48 @@
-name: ROS Semantic Release
-
+name: release
 on:
   workflow_call:
     inputs:
       package:
-        description: 'Package to release (empty = all)'
+        description: Bare ROS package name.
         type: string
-        default: ''
-      package_dir:
-        description: 'Directory containing packages'
-        type: string
-        default: './'
-      # Boolean distro inputs
-      build_kilted:
-        description: 'Build for Kilted'
-        type: boolean
-        default: true
-      build_jazzy:
-        description: 'Build for Jazzy'
-        type: boolean
-        default: false
-      build_iron:
-        description: 'Build for Iron'
-        type: boolean
-        default: true
-      # Architecture options
-      build_amd64:
-        description: 'Build for amd64'
-        type: boolean
-        default: true
-      build_arm64:
-        description: 'Build for arm64'
-        type: boolean
-        default: true
-      # Other options
-      public:
-        description: 'Publish as public packages'
-        type: boolean
-        default: false
-      changelog:
-        description: 'Generate changelog'
-        type: boolean
-        default: false
-      gpu:
-        description: 'Enable GPU support'
-        type: boolean
-        default: false
-      runner_amd64:
-        description: 'Runner for amd64 builds'
-        type: string
-        default: '4vcpu-ubuntu-2404'
-      runner_arm64:
-        description: 'Runner for arm64 builds'
-        type: string
-        default: '4vcpu-ubuntu-2404-arm'
-      runner_release:
-        description: 'Runner for release job'
-        type: string
-        default: '2vcpu-ubuntu-2404'
-      release_branches:
-        description: 'Branches to release from (comma separated)'
-        type: string
-        default: 'main,master,alpha'
-      ignore_packages:
-        description: 'Packages to ignore (comma-separated). Use "pkg" for all distros or "distro:pkg" for specific distro'
-        type: string
-        default: ''
-    secrets:
-      token:
         required: true
+      package_path:
+        description: Path from repo root to the dir containing the package's pixi.toml.
+        type: string
+        required: true
+      recipes_repo:
+        description: GitHub <owner>/<repo> of the recipes repo to dispatch.
+        type: string
+        default: Greenroom-Robotics/ros-recipes
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    outputs:
-      distros: ${{ steps.set-matrix.outputs.distros }}
-      architectures: ${{ steps.set-matrix.outputs.architectures }}
-    steps:
-      - id: set-matrix
-        run: |
-          # Build distros array from boolean inputs
-          distros=()
-          [ "${{ inputs.build_iron }}" == "true" ] && distros+=("iron")
-          [ "${{ inputs.build_jazzy }}" == "true" ] && distros+=("jazzy")
-          [ "${{ inputs.build_kilted }}" == "true" ] && distros+=("kilted")
-
-          if [ ${#distros[@]} -eq 0 ]; then
-            echo "::error::No distros selected"
-            exit 1
-          fi
-
-          # Build architectures array
-          archs=()
-          [ "${{ inputs.build_amd64 }}" == "true" ] && archs+=("amd64")
-          [ "${{ inputs.build_arm64 }}" == "true" ] && archs+=("arm64")
-
-          if [ ${#archs[@]} -eq 0 ]; then
-            echo "::error::No architectures selected"
-            exit 1
-          fi
-
-          echo "distros=$(jq -cn '$ARGS.positional' --args "${distros[@]}")" >> $GITHUB_OUTPUT
-          echo "architectures=$(jq -cn '$ARGS.positional' --args "${archs[@]}")" >> $GITHUB_OUTPUT
-
-  build:
-    needs: setup
-    strategy:
-      fail-fast: true
-      matrix:
-        distro: ${{ fromJson(needs.setup.outputs.distros) }}
-        arch: ${{ fromJson(needs.setup.outputs.architectures) }}
-
-    name: Build - ${{ matrix.arch }} - ${{ matrix.distro }}
-    runs-on: ${{ matrix.arch == 'arm64' && inputs.runner_arm64 || inputs.runner_amd64 }}
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: true
-      
-
-      - name: Create COLCON_IGNORE for excluded packages
-        if: inputs.ignore_packages != ''
-        shell: bash
-        run: |
-          DISTRO="${{ matrix.distro }}"
-          IFS=',' read -ra ENTRIES <<< "${{ inputs.ignore_packages }}"
-          for entry in "${ENTRIES[@]}"; do
-            entry=$(echo "$entry" | xargs)
-            [ -z "$entry" ] && continue
-
-            # Check for distro:package format
-            if [[ "$entry" == *:* ]]; then
-              target_distro=$(echo "${entry%%:*}" | xargs)
-              pkg=$(echo "${entry#*:}" | xargs)
-              # Skip if not for this distro
-              [ "$target_distro" != "$DISTRO" ] && continue
-            else
-              pkg="$entry"
-            fi
-
-            pkg_path="${{ inputs.package_dir }}/${pkg}"
-            if [ -d "$pkg_path" ]; then
-              touch "${pkg_path}/COLCON_IGNORE"
-              echo "Created COLCON_IGNORE in ${pkg_path}"
-            else
-              echo "Warning: Package directory not found: ${pkg_path}"
-            fi
-          done
-
-      - name: Build
-        uses: Greenroom-Robotics/ros_semantic_release_action@main
-        with:
-          token: ${{ secrets.token }}
-          package_dir: ${{ inputs.package_dir }}
-          package: ${{ inputs.package }}
-          arch: ${{ matrix.arch }}
-          ros_distro: ${{ matrix.distro }}
-          github_release: false
-          public: ${{ inputs.public }}
-          changelog: false
-          skip_build: false
-          skip_tag: true
-          gpu: ${{ inputs.gpu }}
-          release_branches: ${{ inputs.release_branches }}
-
   release:
-    name: Create Release
-    runs-on: ${{ inputs.runner_release }}
-    needs: build
-
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Release
-        uses: Greenroom-Robotics/ros_semantic_release_action@main
+      - name: Mint GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
         with:
-          token: ${{ secrets.token }}
-          package_dir: ${{ inputs.package_dir }}
-          package: ${{ inputs.package }}
-          github_release: true
-          public: ${{ inputs.public }}
-          changelog: ${{ inputs.changelog }}
-          skip_build: true
-          skip_tag: false
-          release_branches: ${{ inputs.release_branches }}
+          client-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          # Token must be valid for both source repo (push) and recipes repo (dispatch).
+          # Multi-line newline-separated list.
+          repositories: |
+            ${{ github.event.repository.name }}
+            ros-recipes
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Show inputs (debug)
+        run: |
+          echo "package=${{ inputs.package }}"
+          echo "package_path=${{ inputs.package_path }}"
+          echo "recipes_repo=${{ inputs.recipes_repo }}"
+          test -f "${{ inputs.package_path }}/pixi.toml" \
+            || { echo "::error::pixi.toml not found at ${{ inputs.package_path }}"; exit 1; }
