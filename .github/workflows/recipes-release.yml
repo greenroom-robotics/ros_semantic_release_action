@@ -17,7 +17,7 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/runner=1cpu-linux-x64
     permissions:
       contents: read
     env:
@@ -58,7 +58,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm --prefix "$RELEASE_TOOLING_DIR" ci
-          cargo install --locked toml-cli
+          pip install --quiet tomlkit
 
       - name: Configure git as App bot
         env:
