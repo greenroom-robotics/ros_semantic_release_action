@@ -117,6 +117,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.sha }}
           submodules: true
       
 
@@ -172,6 +173,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
 
       - name: Release
         uses: Greenroom-Robotics/ros_semantic_release_action@main
