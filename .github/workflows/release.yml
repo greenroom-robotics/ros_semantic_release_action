@@ -66,6 +66,10 @@ on:
         description: 'Packages to ignore (comma-separated). Use "pkg" for all distros or "distro:pkg" for specific distro'
         type: string
         default: ''
+      lfs_include:
+        description: 'Glob of LFS files to fetch on the build checkout (gitignore-style, comma-separated). Empty = no LFS fetch.'
+        type: string
+        default: ''
     secrets:
       token:
         required: true
@@ -119,7 +123,13 @@ jobs:
         with:
           ref: ${{ github.sha }}
           submodules: true
-      
+
+      - name: Fetch LFS files
+        if: inputs.lfs_include != ''
+        shell: bash
+        run: |
+          git lfs install --local
+          git lfs pull --include="${{ inputs.lfs_include }}"
 
       - name: Create COLCON_IGNORE for excluded packages
         if: inputs.ignore_packages != ''
