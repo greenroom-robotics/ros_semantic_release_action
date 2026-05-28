@@ -23,7 +23,7 @@ on:
       build_iron:
         description: 'Build for Iron'
         type: boolean
-        default: true
+        default: false
       # Architecture options
       build_amd64:
         description: 'Build for amd64'
