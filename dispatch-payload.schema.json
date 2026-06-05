@@ -8,8 +8,8 @@
   "properties": {
     "package": {
       "type": "string",
-      "description": "Bare ROS package name (no ros-<distro>- prefix).",
-      "pattern": "^[a-z][a-z0-9_]*$"
+      "description": "Package name as it appears in the recipes repo: bare ROS name, or conda name (hyphens allowed) for vendored recipes.",
+      "pattern": "^[a-z][a-z0-9_-]*$"
     },
     "version": {
       "type": "string",
@@ -25,6 +25,15 @@
       "type": "string",
       "description": "SHA of the tagged commit.",
       "pattern": "^[0-9a-f]{40}$"
+    },
+    "manifest_type": {
+      "type": "string",
+      "description": "Manifest format the source repo uses. Defaults to pixi.toml when omitted.",
+      "enum": ["pixi.toml", "package.xml"]
+    },
+    "subdir": {
+      "type": "string",
+      "description": "Path from source-repo root to the package's manifest dir. Omitted when the package sits at the repo root."
     }
   }
 }
