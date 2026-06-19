@@ -42,6 +42,10 @@ on:
         description: 'Generate changelog'
         type: boolean
         default: false
+      skip_tag:
+        description: 'Skip creating the git tag and GitHub release (use when another workflow owns tagging, e.g. the pixi release)'
+        type: boolean
+        default: false
       gpu:
         description: 'Enable GPU support'
         type: boolean
@@ -192,9 +196,9 @@ jobs:
           token: ${{ secrets.token }}
           package_dir: ${{ inputs.package_dir }}
           package: ${{ inputs.package }}
-          github_release: true
+          github_release: ${{ !inputs.skip_tag }}
           public: ${{ inputs.public }}
           changelog: ${{ inputs.changelog }}
           skip_build: true
-          skip_tag: false
+          skip_tag: ${{ inputs.skip_tag }}
           release_branches: ${{ inputs.release_branches }}
