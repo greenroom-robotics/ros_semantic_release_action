@@ -48,6 +48,7 @@ This handles the full pipeline: setup, matrix builds across architectures/distro
 | `build_arm64`      | boolean | `true`                    | Build for arm64                            |
 | `public`           | boolean | `false`                   | Publish to public PPA                      |
 | `changelog`        | boolean | `false`                   | Generate changelog                         |
+| `skip_tag`         | boolean | `false`                   | Skip git tag + GitHub release (another workflow owns tagging) |
 | `gpu`              | boolean | `false`                   | Enable GPU support                         |
 | `runner_amd64`     | string  | `'4vcpu-ubuntu-2404'`     | Runner for amd64 builds                    |
 | `runner_arm64`     | string  | `'4vcpu-ubuntu-2404-arm'` | Runner for arm64 builds                    |
