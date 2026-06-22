@@ -74,6 +74,10 @@ on:
         description: 'Glob of LFS files to fetch on the build checkout (gitignore-style, comma-separated). Empty = no LFS fetch.'
         type: string
         default: ''
+      cli_branch:
+        description: 'Branch of platform_cli to install (for testing platform_cli changes before merge).'
+        type: string
+        default: 'main'
     secrets:
       token:
         required: true
@@ -179,6 +183,7 @@ jobs:
           skip_tag: true
           gpu: ${{ inputs.gpu }}
           release_branches: ${{ inputs.release_branches }}
+          cli_branch: ${{ inputs.cli_branch }}
 
   release:
     name: Create Release
@@ -202,3 +207,4 @@ jobs:
           skip_build: true
           skip_tag: ${{ inputs.skip_tag }}
           release_branches: ${{ inputs.release_branches }}
+          cli_branch: ${{ inputs.cli_branch }}
