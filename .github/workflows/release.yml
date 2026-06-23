@@ -127,6 +127,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           submodules: true
+          token: ${{ secrets.token }}
 
       - name: Fetch LFS files
         if: inputs.lfs_include != ''
