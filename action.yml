@@ -53,6 +53,8 @@ runs:
   steps:
     - name: Collect Workflow Telemetry
       uses: Greenroom-Robotics/workflow-telemetry-action@main
+      with:
+        github_token: ${{ inputs.token }}
 
     - name: Setup Node.js
       uses: actions/setup-node@v4

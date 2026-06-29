@@ -166,7 +166,7 @@ jobs:
           done
 
       - name: Build
-        uses: Greenroom-Robotics/ros_semantic_release_action@main
+        uses: Greenroom-Robotics/ros_semantic_release_action@fix/telemetry-token
         with:
           token: ${{ secrets.token }}
           package_dir: ${{ inputs.package_dir }}
@@ -192,7 +192,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Release
-        uses: Greenroom-Robotics/ros_semantic_release_action@main
+        uses: Greenroom-Robotics/ros_semantic_release_action@fix/telemetry-token
         with:
           token: ${{ secrets.token }}
           package_dir: ${{ inputs.package_dir }}
