@@ -53,11 +53,11 @@ on:
       runner_amd64:
         description: 'Runner for amd64 builds'
         type: string
-        default: '4vcpu-ubuntu-2404'
+        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-x64'
       runner_arm64:
         description: 'Runner for arm64 builds'
         type: string
-        default: '4vcpu-ubuntu-2404-arm'
+        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-arm64'
       runner_release:
         description: 'Runner for release job'
         type: string
@@ -80,7 +80,7 @@ on:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/runner=1cpu-linux-x64
     outputs:
       distros: ${{ steps.set-matrix.outputs.distros }}
       architectures: ${{ steps.set-matrix.outputs.architectures }}
