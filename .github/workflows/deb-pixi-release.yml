@@ -78,6 +78,10 @@ on:
         description: 'Newline- or comma-separated package names whose ros-recipes entry gets `lfs: true`, so the pixi-native buildfarm pulls their LFS objects too. Forwarded to mise recipes-pr. Authoritative per release: a released package not listed here has any existing `lfs: true` removed.'
         type: string
         default: ''
+      docker_secrets:
+        description: 'Mount `token` into the docker build as the BuildKit secrets API_TOKEN_GITHUB and apt_conf. Needed by repos whose own Dockerfile consumes them via --mount=type=secret.'
+        type: boolean
+        default: false
     secrets:
       token:
         description: 'Forwarded to the deb release.yml (github_release + git push).'
@@ -121,6 +125,7 @@ jobs:
       changelog: ${{ inputs.changelog }}
       skip_tag: false
       lfs_include: ${{ inputs.lfs_include }}
+      docker_secrets: ${{ inputs.docker_secrets }}
     secrets:
       token: ${{ secrets.token }}
 

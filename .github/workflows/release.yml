@@ -78,6 +78,10 @@ on:
         description: 'Branch of platform_cli to install (for testing unreleased release-tooling changes).'
         type: string
         default: 'main'
+      docker_secrets:
+        description: 'Mount `token` into the docker build as the BuildKit secrets API_TOKEN_GITHUB and apt_conf. Needed by repos whose own Dockerfile consumes them via --mount=type=secret.'
+        type: boolean
+        default: false
     secrets:
       token:
         required: true
@@ -148,6 +152,21 @@ jobs:
           git lfs install --local
           git lfs pull --include="${{ inputs.lfs_include }}"
 
+      - name: Write docker build secrets
+        id: docker-secrets
+        if: inputs.docker_secrets
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.token }}
+        run: |
+          set -euo pipefail
+          dir="${RUNNER_TEMP}/docker-secrets"
+          mkdir -p "$dir"
+          umask 077
+          printf '%s' "$TOKEN" > "$dir/API_TOKEN_GITHUB"
+          printf 'machine raw.githubusercontent.com/Greenroom-Robotics\nlogin %s\npassword\n' "$TOKEN" > "$dir/apt.conf"
+          echo "json={ \"API_TOKEN_GITHUB\": \"$dir/API_TOKEN_GITHUB\", \"apt_conf\": \"$dir/apt.conf\" }" >> "$GITHUB_OUTPUT"
+
       - name: Create COLCON_IGNORE for excluded packages
         if: inputs.ignore_packages != ''
         shell: bash
@@ -185,6 +204,7 @@ jobs:
           package: ${{ inputs.package }}
           arch: ${{ matrix.arch }}
           ros_distro: ${{ matrix.distro }}
+          secrets: ${{ steps.docker-secrets.outputs.json || '{}' }}
           github_release: false
           public: ${{ inputs.public }}
           changelog: false
