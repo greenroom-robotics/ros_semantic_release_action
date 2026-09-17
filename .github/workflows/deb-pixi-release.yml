@@ -78,14 +78,13 @@ on:
         description: 'Newline- or comma-separated package names whose ros-recipes entry gets `lfs: true`, so the pixi-native buildfarm pulls their LFS objects too. Forwarded to mise recipes-pr. Authoritative per release: a released package not listed here has any existing `lfs: true` removed.'
         type: string
         default: ''
-      docker_secrets:
-        description: 'Mount `token` into the docker build as the BuildKit secrets API_TOKEN_GITHUB and apt_conf. Needed by repos whose own Dockerfile consumes them via --mount=type=secret.'
-        type: boolean
-        default: false
     secrets:
       token:
         description: 'Forwarded to the deb release.yml (github_release + git push).'
         required: true
+      docker_secrets:
+        description: 'JSON object of BuildKit secret id -> file contents, for repos whose own Dockerfile mounts secrets with --mount=type=secret. Forwarded to the deb release.yml.'
+        required: false
       gh-app-client-id:
         description: 'GitHub App client id used to mint a token for private deps, the pixi build, and the recipes PR.'
         required: true
@@ -125,9 +124,9 @@ jobs:
       changelog: ${{ inputs.changelog }}
       skip_tag: false
       lfs_include: ${{ inputs.lfs_include }}
-      docker_secrets: ${{ inputs.docker_secrets }}
     secrets:
       token: ${{ secrets.token }}
+      docker_secrets: ${{ secrets.docker_secrets }}
 
   # Runs in parallel with `deb`. Proves the pixi build path works before the
   # recipes-pr job below opens a PR against the tag `deb` creates - a broken

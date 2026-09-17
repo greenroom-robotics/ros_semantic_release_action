@@ -47,6 +47,9 @@ inputs:
   secrets:
     description: "JSON string of secrets to pass to docker build (e.g. '{\"API_TOKEN_GITHUB\": \"./.secrets/github_token\", \"apt_conf\": \"./.secrets/apt.conf\"}')"
     default: "{}"
+  docker_secrets:
+    description: "JSON string of BuildKit secret id -> file CONTENTS, written to files here and mounted under those ids (e.g. '{\"API_TOKEN_GITHUB\": \"ghp_...\", \"apt_conf\": \"machine ...\\nlogin ...\\n\"}'). Use in place of `secrets` when the caller has the values but no file to point at."
+    default: ""
   bot_slug:
     description: "GitHub App slug to attribute the release commit to. Defaults to the greenroom App bot; set empty to fall back to semantic-release's default identity."
     default: "greenroom-gremlin"
@@ -92,6 +95,14 @@ runs:
         --package=${{ inputs.package }} \
         --package-dir=${{ inputs.package_dir }}
         echo "::endgroup::"
+
+    - name: Write docker build secrets
+      id: docker-secrets
+      shell: bash
+      env:
+        DOCKER_SECRETS: ${{ inputs.docker_secrets }}
+        SECRETS: ${{ inputs.secrets }}
+      run: python3 "$GITHUB_ACTION_PATH/scripts/write_docker_secrets.py"
 
     - name: Download Artifacts
       uses: actions/download-artifact@v4
@@ -140,7 +151,7 @@ runs:
         --skip-tag=${{ inputs.skip_tag }} \
         --skip-build=${{ inputs.skip_build }} \
         --branches=${{ inputs.release_branches }} \
-        --secrets='${{ inputs.secrets }}'
+        --secrets='${{ steps.docker-secrets.outputs.secrets_json }}'
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
