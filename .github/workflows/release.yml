@@ -184,7 +184,7 @@ jobs:
           done
 
       - name: Build
-        uses: Greenroom-Robotics/ros_semantic_release_action@feat/explicit-docker-secrets
+        uses: Greenroom-Robotics/ros_semantic_release_action@main
         with:
           token: ${{ secrets.token }}
           package_dir: ${{ inputs.package_dir }}
