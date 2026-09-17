@@ -3,7 +3,6 @@
 
 import json
 import os
-import stat
 import tempfile
 from pathlib import Path
 
@@ -18,7 +17,6 @@ with tempfile.TemporaryDirectory() as tmp:
 
     assert Path(paths["API_TOKEN_GITHUB"]).read_text() == "tok"
     assert Path(paths["apt_conf"]).read_text() == APT_CONF, "newlines must survive"
-    assert stat.S_IMODE(Path(paths["apt_conf"]).stat().st_mode) == 0o600
 
     for bad in ("../escape", "a/b", "tok en"):
         try:

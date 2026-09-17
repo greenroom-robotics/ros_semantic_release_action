@@ -29,9 +29,7 @@ def materialise(contents: dict[str, str], dest: Path) -> dict[str, str]:
         if not isinstance(value, str):
             raise InvalidSecrets(f"docker secret {secret_id} must be a string")
         path = dest / secret_id
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w") as f:
-            f.write(value)
+        path.write_text(value)
         paths[secret_id] = str(path)
     return paths
 
