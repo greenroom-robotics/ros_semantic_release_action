@@ -141,7 +141,7 @@ jobs:
     runs-on: ${{ matrix.arch == 'arm64' && inputs.runner_arm64 || inputs.runner_amd64 }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           submodules: true
@@ -221,7 +221,7 @@ jobs:
           client-id: ${{ secrets.gh_app_client_id }}
           private-key: ${{ secrets.gh_app_private_key }}
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           # checkout stores this token in the git remote; @semantic-release/git
