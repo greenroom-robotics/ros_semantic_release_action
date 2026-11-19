@@ -33,7 +33,7 @@ on:
 
 jobs:
   deprecated:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Fail with deprecation notice
         run: |
