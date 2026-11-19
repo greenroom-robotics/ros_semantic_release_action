@@ -45,11 +45,11 @@ on:
       runner_amd64:
         description: 'Runner override for amd64 deb builds (empty = release.yml default)'
         type: string
-        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-x64/volume=150gb'
+        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-x64/image=ubuntu26-full-x64/volume=150gb'
       runner_arm64:
         description: 'Runner override for arm64 deb builds (empty = release.yml default)'
         type: string
-        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-arm64/volume=150gb'
+        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-arm64/image=ubuntu26-full-arm64/volume=150gb'
       changelog:
         description: 'Generate changelog'
         type: boolean
@@ -61,7 +61,7 @@ on:
       runner_pixi:
         description: 'Runner for the pixi-verify job (builds a conda package, so bigger than a plain checkout runner).'
         type: string
-        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-x64/volume=150gb'
+        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-x64/image=ubuntu26-full-x64/volume=150gb'
       lfs_include:
         description: 'Glob of LFS files to fetch on the build/pixi-verify checkouts (gitignore-style, comma-separated). Empty = no LFS fetch.'
         type: string
@@ -214,7 +214,7 @@ jobs:
   # pixi build have been verified.
   recipes-pr:
     needs: [deb, pixi-verify]
-    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64
+    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64/image=ubuntu26-full-x64
     permissions:
       contents: read
       id-token: write

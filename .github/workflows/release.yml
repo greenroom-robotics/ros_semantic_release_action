@@ -53,15 +53,15 @@ on:
       runner_amd64:
         description: 'Runner for amd64 builds'
         type: string
-        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-x64/volume=150gb'
+        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-x64/image=ubuntu26-full-x64/volume=150gb'
       runner_arm64:
         description: 'Runner for arm64 builds'
         type: string
-        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-arm64/volume=150gb'
+        default: 'runs-on=${{ github.run_id }}/runner=4cpu-linux-arm64/image=ubuntu26-full-arm64/volume=150gb'
       runner_release:
         description: 'Runner for release job'
         type: string
-        default: '2vcpu-ubuntu-2404'
+        default: '2vcpu-ubuntu-2604'
       release_branches:
         description: 'Branches to release from (comma separated)'
         type: string
@@ -98,7 +98,7 @@ on:
 
 jobs:
   setup:
-    runs-on: runs-on=${{ github.run_id }}/runner=1cpu-linux-x64
+    runs-on: runs-on=${{ github.run_id }}/runner=1cpu-linux-x64/image=ubuntu26-full-x64
     outputs:
       distros: ${{ steps.set-matrix.outputs.distros }}
       architectures: ${{ steps.set-matrix.outputs.architectures }}
